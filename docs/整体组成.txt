@@ -1,0 +1,16 @@
+zkclient是对apache zookeeper的封装
+
+将从zookeeper过来的通知事件分为三类，IZkStateListener接口处理状态变化时的通知，IZkDataListener接口处理节点变化时的通知，
+IZkChildListener接口处理子节点变化时对父节点的通知
+
+共有三个线程，一个是zkclient操作zookeeper集群的线程（主线程），一个是zookeeper用来通知zkclient的线程（通知线程），
+一个是zkclient用来实现事件通知并执行回调接口代码的线程（事件线程）
+
+所有的事件通知单独放到一个线程ZkEventThread类里来完成，避免阻塞zookeeper通知zkclient使用的线程，该线程负责接收从zookeeper过来的通知，
+然后分类并封装到ZkEvent对象中，并把该对象放入到zkclient的事件线程的阻塞队列里即可
+
+ZkClient类实现了Apache的Watcher接口，所以本身是一个Watcher，会接收到所有来自zookeeper的通知，并分类和封装这些通知给事件线程使用
+
+由于apache zookeeper建立连接的过程是异步的，所以zkclient实例化并创建连接后就阻塞自己（主线程）等待连接的结果，当连接成功、
+失败时会由通知线程通知主线程，并解除阻塞，如果超时的话，抛出异常
+
